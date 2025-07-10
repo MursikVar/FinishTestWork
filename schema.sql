@@ -37,7 +37,6 @@ CREATE TABLE user_settings (
     items_per_page INTEGER DEFAULT 5
 );
 
--- Добавляем начальные источники
 INSERT INTO sources (name, base_url) VALUES
 ('Bloomberg', 'bloomberg.com'),
 ('Коммерсантъ', 'kommersant.ru'),

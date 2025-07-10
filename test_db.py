@@ -5,14 +5,12 @@ def test_db_connection():
     db = Database()
     
     try:
-        # Проверка версии PostgreSQL
         result = db.fetch_one("SELECT version();")
         if result:
             print("Успех! Версия PostgreSQL:", result[0])
         else:
             print("Не удалось получить данные")
             
-        # Проверка существования таблицы users
         result = db.fetch_one("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users');")
         if result:
             print("Таблица users существует:", result[0])

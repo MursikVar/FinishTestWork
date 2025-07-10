@@ -15,17 +15,15 @@ import threading
 import time
 from parsers import fetch_all_news
 
-# Настройка логгирования
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Состояния для ConversationHandler
 SET_DEFAULT_SOURCE, SET_ITEMS_PER_PAGE = range(2)
 
-# Доступные команды
 COMMANDS = {
     'start': 'Запуск бота и описание функций',
     'news': 'Получить последние новости',
@@ -39,7 +37,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = Database()
     
     try:
-        # Регистрация пользователя
         db.execute(
             "INSERT INTO users (telegram_id, username, full_name) VALUES (%s, %s, %s) "
             "ON CONFLICT (telegram_id) DO NOTHING",
@@ -47,7 +44,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             commit=True
         )
         
-        # Создание настроек по умолчанию
         db.execute(
             "INSERT INTO user_settings (user_id) "
             "SELECT id FROM users WHERE telegram_id = %s "
@@ -58,7 +54,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         logger.info(f"Пользователь зарегистрирован: {user.full_name} (ID: {user.id})")
         
-        # Формируем сообщение
         message = (
             f"👋 Привет, {user.full_name}!\n\n"
             " В мои возможности входит: \n"
@@ -80,7 +75,6 @@ async def handle_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = Database()
     
     try:
-        # Получение настроек пользователя
         settings = db.fetch_one(
             "SELECT items_per_page, default_source_id FROM user_settings "
             "WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s)",
@@ -94,7 +88,6 @@ async def handle_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
         items_per_page = settings[0] or 5
         default_source_id = settings[1]
         
-        # Формирование запроса в зависимости от настроек
         if default_source_id:
             news = db.fetch_all(
                 "SELECT n.title, n.url, s.base_url FROM news n "
@@ -116,7 +109,6 @@ async def handle_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         response = "Последние новости:\n\n"
         for item in news:
-            # Форматируем ссылку для красивого отображения
             domain = item[2].replace('www.', '').split('/')[0]
             response += f"{item[0]}\n<a href='{item[1]}'>Читать</a>\n\n"
         
@@ -230,7 +222,6 @@ async def subscriptions_command(update: Update, context: ContextTypes.DEFAULT_TY
     db = Database()
     
     try:
-        # Получение текущих подписок пользователя
         subscriptions = db.fetch_all(
             "SELECT s.id, s.name FROM subscriptions sub "
             "JOIN sources s ON sub.source_id = s.id "
@@ -238,10 +229,8 @@ async def subscriptions_command(update: Update, context: ContextTypes.DEFAULT_TY
             (user.id,)
         )
         
-        # Получение всех источников
         all_sources = db.fetch_all("SELECT id, name FROM sources")
         
-        # Формирование клавиатуры
         keyboard = []
         for source in all_sources:
             source_id, source_name = source
@@ -278,7 +267,6 @@ async def subscriptions_button(update: Update, context: ContextTypes.DEFAULT_TYP
         db = Database()
         
         try:
-            # Проверка текущего статуса подписки
             is_subscribed = db.fetch_one(
                 "SELECT id FROM subscriptions WHERE "
                 "user_id = (SELECT id FROM users WHERE telegram_id = %s) AND source_id = %s",
@@ -286,7 +274,6 @@ async def subscriptions_button(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             
             if is_subscribed:
-                # Отписаться
                 db.execute(
                     "DELETE FROM subscriptions WHERE "
                     "user_id = (SELECT id FROM users WHERE telegram_id = %s) AND source_id = %s",
@@ -295,7 +282,6 @@ async def subscriptions_button(update: Update, context: ContextTypes.DEFAULT_TYP
                 )
                 logger.info(f"Пользователь {user_id} отписался от источника {source_id}")
             else:
-                # Подписаться
                 db.execute(
                     "INSERT INTO subscriptions (user_id, source_id) VALUES "
                     "((SELECT id FROM users WHERE telegram_id = %s), %s)",
@@ -304,7 +290,6 @@ async def subscriptions_button(update: Update, context: ContextTypes.DEFAULT_TYP
                 )
                 logger.info(f"Пользователь {user_id} подписался на источник {source_id}")
             
-            # Обновление сообщения с новым статусом
             await subscriptions_command(update, context)
         except Exception as e:
             logger.error(f"Ошибка обновления подписки: {e}")
@@ -323,18 +308,15 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже.")
 
 def setup_handlers(application):
-    # Основные команды
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("news", handle_news))
     application.add_handler(CommandHandler("settings", settings_command))
     application.add_handler(CommandHandler("subscriptions", subscriptions_command))
     application.add_handler(CommandHandler("help", help_command))
     
-    # Обработчики кнопок
     application.add_handler(CallbackQueryHandler(settings_button, pattern='^(set_default_source|set_source_|set_items_per_page|back_to)'))
     application.add_handler(CallbackQueryHandler(subscriptions_button, pattern='^(toggle_sub_|done_subs)'))
     
-    # Conversation Handler для настроек
     conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(settings_button, pattern='^set_items_per_page$')],
         states={
@@ -344,7 +326,6 @@ def setup_handlers(application):
     )
     application.add_handler(conv_handler)
     
-    # Обработчик ошибок
     application.add_error_handler(error_handler)
 
 def news_scheduler():
@@ -355,15 +336,13 @@ def news_scheduler():
             logger.info("Новости успешно обновлены")
         except Exception as e:
             logger.error(f"Ошибка при обновлении новостей: {e}")
-        time.sleep(1800)  # 30 минут
+        time.sleep(1800)  
 
 def main():
-    # Запуск потока для сбора новостей
     scheduler_thread = threading.Thread(target=news_scheduler, daemon=True)
     scheduler_thread.start()
     logger.info("Служба сбора новостей запущена")
     
-    # Создание и запуск бота
     application = Application.builder().token(config.BOT_TOKEN).build()
     setup_handlers(application)
     

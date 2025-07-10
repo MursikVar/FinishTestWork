@@ -94,7 +94,6 @@ def save_news_to_db(source_name, news_items):
             return
         
         for item in news_items:
-            # Проверяем, есть ли уже такая новость
             exists = db.fetch_one("SELECT id FROM news WHERE url = %s", (item['url'],))
             if not exists:
                 db.execute(

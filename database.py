@@ -7,12 +7,10 @@ class Database:
         self.connection = None
         self.cursor = None
         
-        # Проверяем наличие пароля
         if not DB_CONFIG.get('password'):
             print("Внимание: пароль для БД не указан в конфигурации!")
         
         try:
-            # Явно передаем все параметры подключения
             self.connection = psycopg2.connect(
                 dbname=DB_CONFIG['dbname'],
                 user=DB_CONFIG['user'],

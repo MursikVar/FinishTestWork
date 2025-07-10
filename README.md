@@ -41,7 +41,11 @@ pip install -r requirements.txt
 ```bash
 psql -U news_bot -d news_aggregator -f schema.sql
 ```
-4. Запуск бота(через терминал):
+4. Запуск тестирования бота:
+```bash
+python test_db.py
+```
+5. Запуск бота:
 ```bash
 python bot.py
 ```
